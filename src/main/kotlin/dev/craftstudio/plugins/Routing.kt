@@ -2,12 +2,12 @@ package dev.craftstudio.plugins
 
 import dev.craftstudio.auth.AccountPrinciple
 import dev.craftstudio.auth.requireToken
-import dev.craftstudio.data.requests.AccountDetails
-import dev.craftstudio.data.requests.BidInfo
-import dev.craftstudio.data.requests.ErrorResponse
-import dev.craftstudio.data.requests.buyer.GetCommissionBidsResponse
-import dev.craftstudio.data.requests.buyer.SubmitCommissionRequestData
-import dev.craftstudio.data.requests.developer.*
+import dev.craftstudio.data.AccountDetails
+import dev.craftstudio.data.BidInfo
+import dev.craftstudio.data.ErrorResponse
+import dev.craftstudio.data.buyer.GetCommissionBidsResponse
+import dev.craftstudio.data.buyer.SubmitCommissionRequestData
+import dev.craftstudio.data.developer.*
 import dev.craftstudio.db.*
 import dev.craftstudio.db.DatabaseFactory.dbQuery
 import io.ktor.http.*
@@ -90,25 +90,25 @@ fun Application.configureRouting() {
                 // get account
                 val account = call.principal<AccountPrinciple>()?.account
                     ?: return@get call.respond(HttpStatusCode.Unauthorized)
-                if (account.type != AccountType.Buyer)
-                    return@get call.respond(HttpStatusCode.Forbidden)
+//                if (account.type != AccountType.Buyer)
+//                    return@get call.respond(HttpStatusCode.Forbidden)
 
                 // get commission
                 val commission = commissionsDB.read(commissionId)
                     ?: return@get call.respond(HttpStatusCode.NotFound)
-                if (commission.owner.accountId != account.accountId)
-                    return@get call.respond(HttpStatusCode.Forbidden)
+//                if (commission.owner.accountId != account.accountId)
+//                    return@get call.respond(HttpStatusCode.Forbidden)
 
                 // get bid
                 val bid = bidsDB.read(bidId)
                     ?: return@get call.respond(HttpStatusCode.NotFound)
-                if (bid.commission.commissionId != commissionId)
-                    return@get call.respond(HttpStatusCode.Forbidden)
+//                if (bid.commission.commissionId != commissionId)
+//                    return@get call.respond(HttpStatusCode.Forbidden)
 
                 // update commission details
-                commissionsDB.acceptBid(commissionId, bidId)
+                val accepted = commissionsDB.acceptBid(commissionId, bidId)
 
-                call.respond(HttpStatusCode.OK)
+                call.respond(if (accepted) HttpStatusCode.OK else HttpStatusCode.InternalServerError)
             }
 
             get("/developer/available-commissions") {
@@ -147,11 +147,37 @@ fun Application.configureRouting() {
                 call.respond(response)
             }
 
+            get("/developer/in-progress-commissions") {
+                val account = call.principal<AccountPrinciple>()?.account
+                    ?: return@get call.respond(HttpStatusCode.Unauthorized)
+
+                val page = call.parameters["page"]?.toIntOrNull() ?: 1
+                val pageSize = call.parameters["pageSize"]?.toIntOrNull() ?: 10
+
+                val commissions = dbQuery {
+                    Commissions
+                        .select { (Commissions.status eq CommissionStatus.InProgress) and (Commissions.developer eq account.accountId) }
+                        .orderBy(Commissions.creationTime, SortOrder.DESC)
+                        .limit(pageSize, ((page - 1) * pageSize).toLong())
+                        .map { Commission(it).toPreview() }
+                }
+
+                call.respond(commissions as InProgressCommissionsResponse)
+            }
+
             get("/developer/commission/{commissionId}") {
+                val account = call.principal<AccountPrinciple>()?.account
+                    ?: return@get call.respond(HttpStatusCode.Unauthorized)
+//                if (account.type != AccountType.Developer)
+//                    return@get call.respond(HttpStatusCode.Forbidden)
+
                 val commissionId = call.parameters["commissionId"]
                     ?: return@get call.respond(HttpStatusCode.BadRequest)
                 val commission = commissionsDB.read(commissionId.toInt())
                     ?: return@get call.respond(HttpStatusCode.NotFound)
+
+                if (commission.developer?.accountId != account.accountId)
+                    return@get call.respond(HttpStatusCode.Forbidden)
 
                 call.respond(DeveloperCommissionResponse(commission))
             }

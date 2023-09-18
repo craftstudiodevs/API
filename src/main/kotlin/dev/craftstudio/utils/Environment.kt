@@ -2,7 +2,9 @@ package dev.craftstudio.utils
 
 import io.github.cdimascio.dotenv.dotenv
 
-val dotenv = dotenv()
+val dotenv = dotenv {
+    ignoreIfMissing = true
+}
 
 object Environment {
     val HOST = dotenv["HOST"]!!

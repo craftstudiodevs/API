@@ -1,6 +1,6 @@
 package dev.craftstudio.db
 
-import dev.craftstudio.data.requests.developer.DeveloperCommissionPreview
+import dev.craftstudio.data.developer.DeveloperCommissionPreview
 import dev.craftstudio.db.DatabaseFactory.dbQuery
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.*

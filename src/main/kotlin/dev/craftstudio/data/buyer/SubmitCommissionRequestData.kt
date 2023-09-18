@@ -1,4 +1,4 @@
-package dev.craftstudio.data.requests.buyer
+package dev.craftstudio.data.buyer
 
 import kotlinx.serialization.Serializable
 

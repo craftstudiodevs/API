@@ -1,4 +1,4 @@
-package dev.craftstudio.data.requests
+package dev.craftstudio.data
 
 import dev.craftstudio.db.Account
 import kotlinx.serialization.Serializable

@@ -1,6 +1,6 @@
-package dev.craftstudio.data.requests.developer
+package dev.craftstudio.data.developer
 
-import dev.craftstudio.data.requests.AccountDetails
+import dev.craftstudio.data.AccountDetails
 import dev.craftstudio.db.Commission
 import kotlinx.serialization.Serializable
 

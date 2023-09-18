@@ -1,4 +1,4 @@
-package dev.craftstudio.data.requests
+package dev.craftstudio.data
 
 enum class Social {
     YouTube,

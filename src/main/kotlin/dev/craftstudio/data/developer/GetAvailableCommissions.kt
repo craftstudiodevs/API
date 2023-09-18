@@ -1,4 +1,4 @@
-package dev.craftstudio.data.requests.developer
+package dev.craftstudio.data.developer
 
 import kotlinx.serialization.Serializable
 
