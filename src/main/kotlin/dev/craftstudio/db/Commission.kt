@@ -1,7 +1,10 @@
 package dev.craftstudio.db
 
 import dev.craftstudio.data.developer.DeveloperCommissionPreview
-import dev.craftstudio.db.DatabaseFactory.dbQuery
+import dev.craftstudio.db.account.Account
+import dev.craftstudio.db.account.Accounts
+import dev.craftstudio.db.account.accountsDAO
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -10,7 +13,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Serializable
 data class Commission(
-    override val commissionId: Int,
+    override val id: Int,
     val title: String,
     val summary: String,
     val requirements: String,
@@ -20,11 +23,11 @@ data class Commission(
     val creationTime: Long,
     val expiryTime: Long,
     val status: CommissionStatus,
-    val owner: ResolveableAccount,
-    val developer: ResolveableAccount? = null,
-) : ResolveableCommission {
+    val owner: Access<Account>,
+    val developer: Access<Account>? = null,
+) : Access<Commission> {
     constructor(row: ResultRow) : this(
-        commissionId = row[Commissions.id],
+        id = row[Commissions.id],
         title = row[Commissions.title],
         summary = row[Commissions.summary],
         requirements = row[Commissions.requirements],
@@ -34,8 +37,8 @@ data class Commission(
         creationTime = row[Commissions.creationTime],
         expiryTime = row[Commissions.expiryTime],
         status = row[Commissions.status],
-        owner = DatabaseAccount(row[Commissions.owner], accountsDAO),
-        developer = row[Commissions.developer]?.let { DatabaseAccount(it, accountsDAO) },
+        owner = DatabaseAccess(row[Commissions.owner]) { accountsDAO.read(it)!! },
+        developer = row[Commissions.developer]?.let { DatabaseAccess(it) { accountsDAO.read(it)!! } },
     )
 
     val daysRemaining: Long
@@ -47,7 +50,7 @@ data class Commission(
     fun toPreview() = DeveloperCommissionPreview(
         title = title,
         summary = summary,
-        commissionId = commissionId,
+        commissionId = id,
         fixedPriceAmount = fixedPriceAmount,
         hourlyPriceAmount = hourlyPriceAmount,
     )
@@ -56,26 +59,49 @@ data class Commission(
 }
 
 @Serializable
-enum class CommissionStatus { Draft, Bidding, InProgress, Completed, Expired }
+enum class CommissionStatus {
+    /**
+     * The buyer has not yet submitted the commission, and can be edited freely.
+     */
+    @SerialName("draft")
+    Draft,
 
-interface ResolveableCommission {
-    val commissionId: Int
+    /**
+     * Awaiting moderation, can still be edited freely, but editing moves commission to the back of moderation queue.
+     */
+    // TODO: implement moderation
+    @SerialName("moderation")
+    Submitted,
 
-    suspend fun resolve(): Commission
-}
+    /**
+     * It has now been published. Developers can now view and bid on the commission (assuming the right subscription).
+     */
+    @SerialName("bidding")
+    Bidding,
 
-class DatabaseCommission(
-    override val commissionId: Int,
-    private val commissionsDAO: CommissionsDAO,
-) : ResolveableCommission {
-    private var commission: Commission? = null
+    /**
+     * The buyer has accepted a bid. The pair can now go off-platform and develop the commission. Our job is done!
+     * It will remain in this state for 2 weeks, within this two-week period, the buyer can re-submit the commission
+     * with minor tweaks to the information, without using another submission token, which will move it back to
+     * the [Submitted] state.
+     */
+    @SerialName("accepted")
+    Accepted,
 
-    override suspend fun resolve(): Commission {
-        if (commission == null) {
-            commission = commissionsDAO.read(commissionId) ?: error("Commission $commissionId does not exist")
-        }
-        return commission!!
-    }
+    /**
+     * No bids were received within the bid period. Behaves identically as [Accepted],
+     * but with an infinite resubmission period.
+     */
+    @SerialName("expired")
+    Expired,
+
+    /**
+     * The two-week period has expired, and the buyer has not re-submitted the commission. We now assume the commission
+     * has been completed or is in good work, this will server as purely an archive for the developer to look back on.
+     * They cannot resubmit.
+     */
+    @SerialName("archived")
+    Archived,
 }
 
 object Commissions : Table() {
@@ -117,7 +143,7 @@ interface CommissionsDAO {
     suspend fun acceptBid(commissionId: Int, bidId: Int): Boolean
 }
 
-val commissionsDB: CommissionsDAO = CommissionsDAOImpl()
+val commissionsDAO: CommissionsDAO = CommissionsDAOImpl()
 
 class CommissionsDAOImpl : CommissionsDAO {
     override suspend fun all(): List<Commission> = dbQuery {
@@ -168,8 +194,8 @@ class CommissionsDAOImpl : CommissionsDAO {
             it[Commissions.minimumReputation] = commission.minimumReputation
             it[Commissions.creationTime] = commission.creationTime
             it[Commissions.expiryTime] = commission.expiryTime
-            it[Commissions.owner] = commission.owner.accountId
-            it[Commissions.developer] = commission.developer?.accountId
+            it[Commissions.owner] = commission.owner.id
+            it[Commissions.developer] = commission.developer?.id
         } > 0
     }
 
@@ -182,12 +208,12 @@ class CommissionsDAOImpl : CommissionsDAO {
     }
 
     override suspend fun acceptBid(commissionId: Int, bidId: Int): Boolean = dbQuery {
-        val bid = bidsDB.read(bidId) ?: return@dbQuery false
-        if (bid.commission.commissionId != commissionId) return@dbQuery false
+        val bid = bidsDAO.read(bidId) ?: return@dbQuery false
+        if (bid.commission.id != commissionId) return@dbQuery false
 
         Commissions.update({ Commissions.id eq commissionId }) {
-            it[Commissions.developer] = bid.bidder.accountId
-            it[Commissions.status] = CommissionStatus.InProgress
+            it[Commissions.developer] = bid.bidder.id
+            it[Commissions.status] = CommissionStatus.Accepted
         } > 0 && Bids.update({ Bids.id eq bidId }) {
             it[Bids.accepted] = true
         } > 0

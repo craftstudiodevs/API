@@ -1,11 +1,12 @@
 package dev.craftstudio.utils
 
-import io.github.cdimascio.dotenv.dotenv
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
+import java.security.SecureRandom
+import java.util.*
 
 val httpClient = HttpClient(CIO) {
     install(ContentNegotiation) {
@@ -14,3 +15,6 @@ val httpClient = HttpClient(CIO) {
         })
     }
 }
+
+val Double.dollars: Int
+    get() = (this * 100).toInt()

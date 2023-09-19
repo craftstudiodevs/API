@@ -1,29 +1,33 @@
 package dev.craftstudio.db
 
-import dev.craftstudio.db.DatabaseFactory.dbQuery
+import dev.craftstudio.db.account.Account
+import dev.craftstudio.db.account.Accounts
+import dev.craftstudio.db.account.accountsDAO
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 
 data class Bid(
-    val id: Int,
-    val commission: ResolveableCommission,
-    val bidder: ResolveableAccount,
+    override val id: Int,
+    val commission: Access<Commission>,
+    val bidder: Access<Account>,
     val fixedPriceAmount: Int,
     val hourlyPriceAmount: Int,
     val creationTime: Long,
     val developerTestimonial: String?,
     val accepted: Boolean,
-) {
+) : Access<Bid> {
     constructor(row: ResultRow) : this(
         id = row[Bids.id],
-        commission = DatabaseCommission(row[Bids.commission], commissionsDB),
-        bidder = DatabaseAccount(row[Bids.bidder], accountsDAO),
+        commission = DatabaseAccess(row[Bids.commission]) { commissionsDAO.read(it)!! },
+        bidder = DatabaseAccess(row[Bids.bidder]) { accountsDAO.read(it)!! },
         fixedPriceAmount = row[Bids.fixedPriceAmount],
         hourlyPriceAmount = row[Bids.hourlyPriceAmount],
         creationTime = row[Bids.creationTime],
         developerTestimonial = row[Bids.developerTestimonial],
         accepted = row[Bids.accepted],
     )
+
+    override suspend fun resolve(): Bid = this
 }
 
 object Bids : Table() {
@@ -64,7 +68,7 @@ interface BidsDAO {
     suspend fun getBidsForAccount(accountId: Int): List<Bid>
 }
 
-val bidsDB: BidsDAO = BidsDAOImpl()
+val bidsDAO: BidsDAO = BidsDAOImpl()
 
 class BidsDAOImpl : BidsDAO {
     override suspend fun create(commissionId: Int, bidderId: Int, fixedPriceAmount: Int, hourlyPriceAmount: Int, testimonial: String?): Bid? = dbQuery {
@@ -90,8 +94,8 @@ class BidsDAOImpl : BidsDAO {
 
     override suspend fun update(id: Int, bid: Bid): Boolean = dbQuery {
         Bids.update({ Bids.id eq id }) {
-            it[commission] = bid.commission.commissionId
-            it[bidder] = bid.bidder.accountId
+            it[commission] = bid.commission.id
+            it[bidder] = bid.bidder.id
             it[fixedPriceAmount] = bid.fixedPriceAmount
             it[hourlyPriceAmount] = bid.hourlyPriceAmount
             it[creationTime] = bid.creationTime

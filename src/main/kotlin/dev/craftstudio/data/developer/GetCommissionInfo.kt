@@ -24,7 +24,7 @@ suspend fun DeveloperCommissionResponse(commission: Commission) = DeveloperCommi
     buyerFixedPricePref = commission.fixedPriceAmount,
     buyerRatePricePref = commission.hourlyPriceAmount,
     expiryTime = commission.expiryTime,
-    commissionId = commission.commissionId,
+    commissionId = commission.id,
     buyer = AccountDetails(commission.owner.resolve()),
     minimumReputation = commission.minimumReputation,
 )

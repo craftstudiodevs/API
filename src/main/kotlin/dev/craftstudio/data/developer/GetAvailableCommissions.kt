@@ -3,15 +3,6 @@ package dev.craftstudio.data.developer
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class GetAvailableCommissionsRequest(
-    val page: Int = 1,
-    val pageSize: Int = 20,
-    val searchQuery: String = "",
-    val sortFunction: CommissionSortFunction = CommissionSortFunction.DATE_CREATED,
-    val inverseSortFunction: Boolean = false,
-)
-
-@Serializable
 enum class CommissionSortFunction {
     DATE_CREATED,
     DATE_EXPIRY,

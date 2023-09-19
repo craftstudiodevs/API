@@ -2,8 +2,7 @@ package dev.craftstudio.auth
 
 import dev.craftstudio.auth.data.LoginSuccessResponse
 import dev.craftstudio.auth.oauth.DiscordUser
-import dev.craftstudio.db.AccountType
-import dev.craftstudio.db.accountsDAO
+import dev.craftstudio.db.account.accountsDAO
 import dev.craftstudio.utils.Environment
 import dev.craftstudio.utils.httpClient
 import io.ktor.client.call.*
@@ -69,14 +68,13 @@ fun Application.configureAuth() {
                     return@get call.respond(HttpStatusCode.BadRequest)
 
                 val account = accountsDAO.readByDiscordId(discordUser.id) ?: accountsDAO.create(
-                    type = AccountType.Developer,
                     discordId = discordUser.id,
                     username = discordUser.username,
                     email = discordUser.email
                 )
                 println(account)
 
-                call.sessions.set("user_session", UserSession(account!!.accountId))
+                call.sessions.set("user_session", UserSession(account!!.id))
 
                 call.respond(LoginSuccessResponse(success = true, account.accessToken))
             }
