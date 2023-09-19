@@ -55,7 +55,7 @@ fun Routing.configureBuyerRoutes() {
                 ?: return@post call.respond(HttpStatusCode.Unauthorized)
 
             if ((account.buyerAccount?.resolve()?.remainingCommissions ?: 0) < 1)
-                return@post call.respond(HttpStatusCode.Forbidden)
+                return@post call.respondError(HttpStatusCode.Forbidden, reason = "Not a buyer or no remaining commissions")
 
             val data = call.receive<SubmitCommissionRequestData>()
 
@@ -76,15 +76,15 @@ fun Routing.configureBuyerRoutes() {
 
         get("/buyer/commission/{commissionId}/bids") {
             val commissionId = call.parameters["commissionId"]?.toIntOrNull()
-                ?: return@get call.respond(HttpStatusCode.BadRequest)
+                ?: return@get call.respondError(HttpStatusCode.BadRequest, reason = "Invalid commission ID")
 
             val account = call.principal<AccountPrinciple>()?.account
                 ?: return@get call.respond(HttpStatusCode.Unauthorized)
 
             if (!account.isBuyer) // saves a DB query
-                return@get call.respond(HttpStatusCode.Forbidden)
+                return@get call.respondError(HttpStatusCode.Forbidden, reason = "Not a buyer.")
             if (commissionsDAO.read(commissionId)?.owner?.id != account.id)
-                return@get call.respond(HttpStatusCode.Forbidden)
+                return@get call.respondError(HttpStatusCode.Forbidden, reason = "You are not the owner of this commission.")
 
             val bids: GetCommissionBidsResponse = bidsDAO.getBidsForCommission(commissionId).map {
                 BidInfo(
@@ -102,9 +102,9 @@ fun Routing.configureBuyerRoutes() {
         get("/buyer/commission/{commissionId}/accept-bid") {
             // get parameters
             val commissionId = call.parameters["commissionId"]?.toIntOrNull()
-                ?: return@get call.respond(HttpStatusCode.BadRequest)
+                ?: return@get call.respondError(HttpStatusCode.BadRequest, reason = "Invalid commission ID")
             val bidId = call.parameters["bidId"]?.toIntOrNull()
-                ?: return@get call.respond(HttpStatusCode.BadRequest)
+                ?: return@get call.respondError(HttpStatusCode.BadRequest, reason = "Invalid bid ID")
 
             // get account
             val account = call.principal<AccountPrinciple>()?.account
@@ -114,15 +114,15 @@ fun Routing.configureBuyerRoutes() {
 
             // get commission
             val commission = commissionsDAO.read(commissionId)
-                ?: return@get call.respond(HttpStatusCode.NotFound)
+                ?: return@get call.respondError(HttpStatusCode.NotFound, reason = "Commission not found")
             if (commission.owner.id != account.id)
-                return@get call.respond(HttpStatusCode.Forbidden)
+                return@get call.respondError(HttpStatusCode.Forbidden, reason = "You are not the owner of this commission")
 
             // get bid
             val bid = bidsDAO.read(bidId)
-                ?: return@get call.respond(HttpStatusCode.NotFound)
+                ?: return@get call.respondError(HttpStatusCode.NotFound, reason = "Bid not found")
             if (bid.commission.id != commissionId)
-                return@get call.respond(HttpStatusCode.Forbidden)
+                return@get call.respondError(HttpStatusCode.Forbidden, reason = "Bid is not for this commission")
 
             // update commission details
             val accepted = commissionsDAO.acceptBid(commissionId, bidId)

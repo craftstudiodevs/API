@@ -2,6 +2,7 @@ package dev.craftstudio.auth
 
 import dev.craftstudio.auth.data.LoginSuccessResponse
 import dev.craftstudio.auth.oauth.DiscordUser
+import dev.craftstudio.data.respondError
 import dev.craftstudio.db.account.accountsDAO
 import dev.craftstudio.utils.Environment
 import dev.craftstudio.utils.httpClient
@@ -22,8 +23,12 @@ fun Application.configureAuth() {
     authentication {
         bearer("session-token") {
             authenticate { credential ->
-                accountsDAO.readByAccessToken(credential.token)
+                val principle = accountsDAO.readByAccessToken(credential.token)
                     ?.let { AccountPrinciple(it) }
+                if (principle == null) {
+                    respondError(HttpStatusCode.Unauthorized, "Invalid token")
+                }
+                principle
             }
         }
 
