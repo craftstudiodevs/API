@@ -10,7 +10,11 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 object DatabaseFactory {
     fun init() {
-        val driverClassName = "org.h2.Driver"
+        val driverClassName = when (Environment.DATABASE_TYPE) {
+            "sqlite" -> "org.sqlite.JDBC"
+            "h2" -> "org.h2.Driver"
+            else -> throw IllegalArgumentException("Unknown database type: ${Environment.DATABASE_TYPE}")
+        }
         val jdbcURL = Environment.DATABASE_URL
         val database = Database.connect(jdbcURL, driverClassName)
         transaction(database) {
