@@ -25,7 +25,6 @@ fun Application.module() {
     configureStatusPages()
     configureAccountRoutes()
     configurePaymentRoutes()
-    //SubscriptionManager
     configureTestFrontend()
     configureSignupRoutes()
 }

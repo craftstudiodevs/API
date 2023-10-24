@@ -4,7 +4,7 @@ ktor = "2.3.4"
 logback = "1.4.11"
 jetbrains_exposed = "0.41.1"
 db_h2 = "2.1.210"
-db_sqlite = "3.34.0.0"
+db_sqlite = "3.43.2.1"
 kotlin_css = "1.0.0-pre.635"
 stripe_java = "24.0.0"
 gson = "2.10.1"
@@ -23,7 +23,7 @@ ktor_server_content_negotiation = { module = "io.ktor:ktor-server-content-negoti
 ktor_server_call_logging = { module = "io.ktor:ktor-server-call-logging-jvm", version.ref = "ktor" }
 ktor_server_netty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }
 ktor_server_rate_limit = { module = "io.ktor:ktor-server-rate-limit-jvm", version.ref = "ktor" }
-ktor_server_html_builder = { module = "io.ktor:ktor-html-builder-jvm", version.ref = "ktor" }
+ktor_server_html_builder = { module = "io.ktor:ktor-server-html-builder-jvm", version.ref = "ktor" }
 ktor_serialization_kotlinx_json = { module = "io.ktor:ktor-serialization-kotlinx-json-jvm", version.ref = "ktor" }
 kotlin_css = { module = "org.jetbrains.kotlin-wrappers:kotlin-css", version.ref = "kotlin_css" }
 
