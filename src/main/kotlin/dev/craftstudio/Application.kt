@@ -2,8 +2,10 @@ package dev.craftstudio
 
 import dev.craftstudio.auth.configureAuth
 import dev.craftstudio.db.DatabaseFactory
+import dev.craftstudio.payment.configurePaymentRoutes
 import dev.craftstudio.plugins.*
 import dev.craftstudio.routes.*
+import dev.craftstudio.testfrontend.configureTestFrontend
 import dev.craftstudio.utils.Environment
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -22,4 +24,8 @@ fun Application.module() {
     configureRateLimiting()
     configureStatusPages()
     configureAccountRoutes()
+    configurePaymentRoutes()
+    //SubscriptionManager
+    configureTestFrontend()
+    configureSignupRoutes()
 }

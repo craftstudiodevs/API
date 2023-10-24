@@ -1,6 +1,7 @@
 package dev.craftstudio.db.account
 
 import dev.craftstudio.db.*
+import dev.craftstudio.utils.Environment
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -14,6 +15,7 @@ object Accounts : Table() {
     val accessToken = uuid("access_token").autoGenerate()
     val buyerData = bool("buyer_data").default(false)
     val developerData = bool("developer_data").default(false)
+    val stripeCustomerId = varchar("stripe_customer_id", 64).nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -27,12 +29,34 @@ data class Account(
     val accessToken: String,
     val buyerAccount: Access<BuyerAccount>? = null,
     val developerAccount: Access<DeveloperAccount>? = null,
+    val stripeCustomerId: String?,
 ) : Access<Account> {
     val isBuyer get() = buyerAccount != null
     val isDeveloper get() = developerAccount != null
 
     override suspend fun resolve(): Account = this
 }
+
+private val testAccount = Account(
+    id = -1,
+    discordId = "",
+    username = "test-account",
+    email = "example@example.com",
+    accessToken = Environment.TEST_TOKEN,
+    buyerAccount = BuyerAccount(
+        id = -1,
+        subscriptionType = BuyerSubscriptionType.FREE_TIER,
+        remainingCommissions = 5,
+        totalCommissions = 5,
+    ),
+    developerAccount = DeveloperAccount(
+        id = -1,
+        subscriptionType = DeveloperSubscriptionType.FREE_TIER,
+        remainingBids = 5,
+        totalBids = 5,
+    ),
+    stripeCustomerId = null,
+)
 
 interface AccountsDAO {
     suspend fun create(discordId: String, username: String, email: String): Account?
@@ -41,14 +65,11 @@ interface AccountsDAO {
     suspend fun delete(id: Int): Boolean
     suspend fun all(): List<Account>
 
-    suspend fun addBuyerData(id: Int): BuyerAccount
-    suspend fun readBuyerData(id: Int): BuyerAccount?
-
-    suspend fun addDeveloperData(id: Int): DeveloperAccount
-    suspend fun readDeveloperData(id: Int): DeveloperAccount?
+    suspend fun updateStripeCustomerId(id: Int, stripeCustomerId: String?): Boolean
 
     suspend fun readByAccessToken(accessToken: String): Account?
     suspend fun readByDiscordId(discordId: String): Account?
+    suspend fun readByStripeCustomerId(stripeCustomerId: String): Account?
 }
 
 val accountsDAO: AccountsDAO = AccountsDAOImpl()
@@ -83,6 +104,7 @@ class AccountsDAOImpl : AccountsDAO {
             it[email] = account.email
             it[buyerData] = account.buyerAccount != null
             it[developerData] = account.developerAccount != null
+            it[stripeCustomerId] = account.stripeCustomerId
         } > 0
     }
 
@@ -90,45 +112,17 @@ class AccountsDAOImpl : AccountsDAO {
         Accounts.deleteWhere { Accounts.id eq id } > 0
     }
 
-    override suspend fun addBuyerData(id: Int): BuyerAccount = dbQuery {
-        val insertStatement = BuyerAccounts.insert {
-            it[BuyerAccounts.id] = id
-            it[BuyerAccounts.subscriptionType] = BuyerSubscriptionType.FREE_TIER.id
-            it[BuyerAccounts.remainingCommissions] = 0
-            it[BuyerAccounts.totalCommissions] = 0
-        }
-        val buyerAccount = insertStatement.resultedValues?.singleOrNull()?.let(::resultRowToBuyerAccount)
-            ?: throw IllegalStateException("Failed to create buyer account")
+    override suspend fun updateStripeCustomerId(id: Int, stripeCustomerId: String?): Boolean = dbQuery {
         Accounts.update({ Accounts.id eq id }) {
-            it[buyerData] = true
-        }
-        buyerAccount
-    }
-
-    override suspend fun readBuyerData(id: Int): BuyerAccount? = dbQuery {
-        BuyerAccounts.select { BuyerAccounts.id eq id }.singleOrNull()?.let(::resultRowToBuyerAccount)
-    }
-
-    override suspend fun addDeveloperData(id: Int): DeveloperAccount = dbQuery {
-        val insertStatement = DeveloperAccounts.insert {
-            it[DeveloperAccounts.id] = id
-            it[DeveloperAccounts.subscriptionType] = DeveloperSubscriptionType.FREE_TIER.id
-            it[DeveloperAccounts.remainingBids] = 0
-            it[DeveloperAccounts.totalBids] = 0
-        }
-        val developerAccount = insertStatement.resultedValues?.singleOrNull()?.let(::resultRowToDeveloperAccount)
-            ?: throw IllegalStateException("Failed to create developer account")
-        Accounts.update({ Accounts.id eq id }) {
-            it[developerData] = true
-        }
-        developerAccount
-    }
-
-    override suspend fun readDeveloperData(id: Int): DeveloperAccount? = dbQuery {
-        DeveloperAccounts.select { DeveloperAccounts.id eq id }.singleOrNull()?.let(::resultRowToDeveloperAccount)
+            it[Accounts.stripeCustomerId] = stripeCustomerId
+        } > 0
     }
 
     override suspend fun readByAccessToken(accessToken: String): Account? = dbQuery {
+        if (accessToken == Environment.TEST_TOKEN) {
+            return@dbQuery testAccount
+        }
+
         Accounts
             .select { Accounts.accessToken eq UUID.fromString(accessToken) }
             .map { resultRowToAccount(it) }
@@ -142,28 +136,28 @@ class AccountsDAOImpl : AccountsDAO {
             .singleOrNull()
     }
 
+    override suspend fun readByStripeCustomerId(stripeCustomerId: String): Account? = dbQuery {
+        Accounts
+            .select { Accounts.stripeCustomerId eq stripeCustomerId }
+            .map { resultRowToAccount(it) }
+            .singleOrNull()
+    }
+
     private fun resultRowToAccount(row: ResultRow) = Account(
         id = row[Accounts.id],
         discordId = row[Accounts.discordId],
         username = row[Accounts.username],
         email = row[Accounts.email],
         accessToken = row[Accounts.accessToken].toString(),
-        buyerAccount = if(row[Accounts.buyerData]) DatabaseAccess(row[Accounts.id]) { readBuyerData(it)!! } else null,
-        developerAccount = if(row[Accounts.developerData]) DatabaseAccess(row[Accounts.id]) { readDeveloperData(it)!! } else null,
+        buyerAccount = if(row[Accounts.buyerData]) DatabaseAccess(row[Accounts.id]) { buyerAccountDAO.read(it)!! } else null,
+        developerAccount = if(row[Accounts.developerData]) DatabaseAccess(row[Accounts.id]) { developerAccountDAO.read(it)!! } else null,
+        stripeCustomerId = row[Accounts.stripeCustomerId],
     )
+}
 
-    private fun resultRowToBuyerAccount(row: ResultRow) = BuyerAccount(
-        id = row[BuyerAccounts.id],
-        subscriptionType = BuyerSubscriptionType.allTypes[row[BuyerAccounts.subscriptionType]]!!,
-        remainingCommissions = row[BuyerAccounts.remainingCommissions],
-        totalCommissions = row[BuyerAccounts.totalCommissions],
-    )
-
-    private fun resultRowToDeveloperAccount(row: ResultRow) = DeveloperAccount(
-        id = row[DeveloperAccounts.id],
-        subscriptionType = DeveloperSubscriptionType.allTypes[row[DeveloperAccounts.subscriptionType]]!!,
-        remainingBids = row[DeveloperAccounts.remainingBids],
-        totalBids = row[DeveloperAccounts.totalBids],
-    )
+interface SubscriptionType {
+    val id: Int
+    val name: String
+    val stripeId: String?
 }
 

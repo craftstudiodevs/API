@@ -1,7 +1,7 @@
 package dev.craftstudio.routes
 
 import dev.craftstudio.auth.AccountPrinciple
-import dev.craftstudio.auth.requireToken
+import dev.craftstudio.auth.authenticateUser
 import dev.craftstudio.data.account.*
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -14,7 +14,7 @@ fun Application.configureAccountRoutes() {
         configureBuyerRoutes()
         configureDeveloperRoutes()
 
-        requireToken {
+        authenticateUser {
             get("/account/me") {
                 val account = call.principal<AccountPrinciple>()?.account
                     ?: return@get call.respond(HttpStatusCode.Unauthorized)

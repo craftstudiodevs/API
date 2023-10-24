@@ -2,7 +2,7 @@ package dev.craftstudio.auth
 
 import dev.craftstudio.auth.data.LoginSuccessResponse
 import dev.craftstudio.auth.oauth.DiscordUser
-import dev.craftstudio.data.respondError
+import dev.craftstudio.db.account.Account
 import dev.craftstudio.db.account.accountsDAO
 import dev.craftstudio.utils.Environment
 import dev.craftstudio.utils.httpClient
@@ -14,21 +14,45 @@ import io.ktor.server.auth.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
+import io.ktor.util.pipeline.*
+import kotlin.time.Duration.Companion.days
 
 fun Application.configureAuth() {
     install(Sessions) {
-        cookie<UserSession>("user_session")
+        /**
+         * Serialized as a cookie on the client.
+         * This should not be a DB thing but the bare minimum.
+         */
+        cookie<UserSession>("user_session") {
+            cookie.maxAge = 7.days
+            cookie.httpOnly = false // TODO: research if this is okay. this is so javascript can access the cookie
+        }
     }
 
     authentication {
-        bearer("session-token") {
-            authenticate { credential ->
-                val principle = accountsDAO.readByAccessToken(credential.token)
-                    ?.let { AccountPrinciple(it) }
-                if (principle == null) {
-                    respondError(HttpStatusCode.Unauthorized, "Invalid token")
+        /**
+         * Allows for either a cookie session OR the api token to be used for authentication
+         */
+        sessionOrBearer<UserSession>("logged_in") {
+            sessionValidate {
+                val account = accountsDAO.read(it.accountId)
+                if (account?.accessToken == it.apiToken) {
+                    authentication.principal(AccountPrinciple(account))
+                    it
+                } else {
+                    null
                 }
-                principle
+            }
+
+            sessionChallenge {
+                call.respondRedirect("http://localhost:8080/auth/login")
+            }
+
+            bearerValidate {
+                val account = accountsDAO.readByAccessToken(it.token)
+                    ?: return@bearerValidate null
+                authentication.principal(AccountPrinciple(account))
+                UserSession(account.id, account.accessToken)
             }
         }
 
@@ -50,12 +74,6 @@ fun Application.configureAuth() {
     }
 
     routing {
-        authenticate("session-token") {
-            get("/protected/test") {
-                call.respondText("this is some very secure data")
-            }
-        }
-
         authenticate("auth-oauth-discord") {
             get("/auth/login") {
 
@@ -76,21 +94,17 @@ fun Application.configureAuth() {
                     discordId = discordUser.id,
                     username = discordUser.username,
                     email = discordUser.email
-                )
-                println(account)
+                ) ?: return@get call.respond(HttpStatusCode.InternalServerError)
 
-                call.sessions.set("user_session", UserSession(account!!.id))
-
+                call.sessions.set(UserSession(account.id, account.accessToken))
                 call.respond(LoginSuccessResponse(success = true, account.accessToken))
             }
         }
     }
 }
 
-fun Routing.requireToken(build: Route.() -> Unit): Route {
-    return authenticate("session-token") {
-        build()
+fun Route.authenticateUser(build: Route.(account: PipelineContext<*, ApplicationCall>.() -> Account) -> Unit): Route {
+    return authenticate("logged_in") {
+        build { call.principal<AccountPrinciple>()!!.account }
     }
 }
-
-data class UserSession(val accountId: Int)

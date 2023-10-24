@@ -1,7 +1,7 @@
 package dev.craftstudio.routes
 
 import dev.craftstudio.auth.AccountPrinciple
-import dev.craftstudio.auth.requireToken
+import dev.craftstudio.auth.authenticateUser
 import dev.craftstudio.data.AccountDetails
 import dev.craftstudio.data.BidInfo
 import dev.craftstudio.data.buyer.BuyerCommissionPreview
@@ -10,6 +10,7 @@ import dev.craftstudio.data.buyer.GetMyCommissionsResponse
 import dev.craftstudio.data.buyer.SubmitCommissionRequestData
 import dev.craftstudio.data.respondError
 import dev.craftstudio.db.*
+import dev.craftstudio.db.account.buyerAccountDAO
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -19,10 +20,9 @@ import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
 
 fun Routing.configureBuyerRoutes() {
-    requireToken {
+    authenticateUser { accountGetter ->
         get("/buyer/list-commissions") {
-            val account = call.principal<AccountPrinciple>()?.account
-                ?: return@get call.respond(HttpStatusCode.Unauthorized)
+            val account = accountGetter()
 
             val page = call.parameters["page"]?.toIntOrNull() ?: 1
             val pageSize = call.parameters["pageSize"]?.toIntOrNull() ?: 10
@@ -51,11 +51,15 @@ fun Routing.configureBuyerRoutes() {
         }
 
         post("/buyer/submit-commission") {
-            val account = call.principal<AccountPrinciple>()?.account
-                ?: return@post call.respond(HttpStatusCode.Unauthorized)
+            val account = accountGetter()
+            val buyerAccount = account.buyerAccount?.resolve()
+                ?: return@post call.respondError(HttpStatusCode.Forbidden, reason = "You are not a buyer")
 
-            if ((account.buyerAccount?.resolve()?.remainingCommissions ?: 0) < 1)
-                return@post call.respondError(HttpStatusCode.Forbidden, reason = "Not a buyer or no remaining commissions")
+            if (buyerAccount.remainingCommissions == 0) // -1 means unlimited
+                return@post call.respondError(
+                    HttpStatusCode.Forbidden,
+                    reason = "No remaining commissions"
+                )
 
             val data = call.receive<SubmitCommissionRequestData>()
 
@@ -71,7 +75,16 @@ fun Routing.configureBuyerRoutes() {
                 CommissionStatus.Bidding,
             ) != null
 
-            call.respond(if (success) HttpStatusCode.Accepted else HttpStatusCode.InternalServerError)
+            if (success) {
+                buyerAccountDAO.updateCommissionCount(
+                    buyerAccount.id,
+                    buyerAccount.remainingCommissions - 1,
+                    buyerAccount.totalCommissions + 1
+                )
+                call.respond(HttpStatusCode.Accepted)
+            } else {
+                call.respondError(HttpStatusCode.InternalServerError, reason = "Failed to create commission")
+            }
         }
 
         get("/buyer/commission/{commissionId}/bids") {
@@ -84,7 +97,10 @@ fun Routing.configureBuyerRoutes() {
             if (!account.isBuyer) // saves a DB query
                 return@get call.respondError(HttpStatusCode.Forbidden, reason = "Not a buyer.")
             if (commissionsDAO.read(commissionId)?.owner?.id != account.id)
-                return@get call.respondError(HttpStatusCode.Forbidden, reason = "You are not the owner of this commission.")
+                return@get call.respondError(
+                    HttpStatusCode.Forbidden,
+                    reason = "You are not the owner of this commission."
+                )
 
             val bids: GetCommissionBidsResponse = bidsDAO.getBidsForCommission(commissionId).map {
                 BidInfo(
@@ -116,7 +132,10 @@ fun Routing.configureBuyerRoutes() {
             val commission = commissionsDAO.read(commissionId)
                 ?: return@get call.respondError(HttpStatusCode.NotFound, reason = "Commission not found")
             if (commission.owner.id != account.id)
-                return@get call.respondError(HttpStatusCode.Forbidden, reason = "You are not the owner of this commission")
+                return@get call.respondError(
+                    HttpStatusCode.Forbidden,
+                    reason = "You are not the owner of this commission"
+                )
 
             // get bid
             val bid = bidsDAO.read(bidId)
@@ -129,5 +148,6 @@ fun Routing.configureBuyerRoutes() {
 
             call.respond(if (accepted) HttpStatusCode.OK else HttpStatusCode.InternalServerError)
         }
+
     }
 }
