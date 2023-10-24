@@ -1,0 +1,84 @@
+[versions]
+kotlin = "1.9.10"
+ktor = "2.3.4"
+logback = "1.4.11"
+jetbrains_exposed = "0.41.1"
+db_h2 = "2.1.210"
+db_sqlite = "3.34.0.0"
+kotlin_css = "1.0.0-pre.635"
+stripe_java = "24.0.0"
+gson = "2.10.1"
+dotenv_kotlin = "6.4.1"
+
+[libraries]
+# Server
+ktor_server_core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
+ktor_server_auth = { module = "io.ktor:ktor-server-auth-jvm", version.ref = "ktor" }
+ktor_server_sessions = { module = "io.ktor:ktor-server-sessions-jvm", version.ref = "ktor" }
+ktor_server_host_common = { module = "io.ktor:ktor-server-host-common-jvm", version.ref = "ktor" }
+ktor_server_status_pages = { module = "io.ktor:ktor-server-status-pages-jvm", version.ref = "ktor" }
+ktor_server_http_redirect = { module = "io.ktor:ktor-server-http-redirect-jvm", version.ref = "ktor" }
+ktor_server_metrics = { module = "io.ktor:ktor-server-metrics-jvm", version.ref = "ktor" }
+ktor_server_content_negotiation = { module = "io.ktor:ktor-server-content-negotiation-jvm", version.ref = "ktor" }
+ktor_server_call_logging = { module = "io.ktor:ktor-server-call-logging-jvm", version.ref = "ktor" }
+ktor_server_netty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }
+ktor_server_rate_limit = { module = "io.ktor:ktor-server-rate-limit-jvm", version.ref = "ktor" }
+ktor_server_html_builder = { module = "io.ktor:ktor-html-builder-jvm", version.ref = "ktor" }
+ktor_serialization_kotlinx_json = { module = "io.ktor:ktor-serialization-kotlinx-json-jvm", version.ref = "ktor" }
+kotlin_css = { module = "org.jetbrains.kotlin-wrappers:kotlin-css", version.ref = "kotlin_css" }
+
+# Database
+jetbrains_exposed_core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "jetbrains_exposed" }
+jetbrains_exposed_dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "jetbrains_exposed" }
+jetbrains_exposed_jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "jetbrains_exposed" }
+db_sqlite_jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "db_sqlite" }
+db_h2_jdbc = { module = "com.h2database:h2", version.ref = "db_h2" }
+
+# Payment
+stripe_java = { module = "com.stripe:stripe-java", version.ref = "stripe_java" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+
+# Client
+ktor_client_core = { module = "io.ktor:ktor-client-core-jvm", version.ref = "ktor" }
+ktor_client_cio = { module = "io.ktor:ktor-client-cio-jvm", version.ref = "ktor" }
+ktor_client_json = { module = "io.ktor:ktor-client-json-jvm", version.ref = "ktor" }
+ktor_client_content_negotiation = { module = "io.ktor:ktor-client-content-negotiation-jvm", version.ref = "ktor" }
+
+# Testing
+ktor_server_tests = { module = "io.ktor:ktor-server-tests-jvm", version.ref = "ktor" }
+kotlin_test_junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+
+# Util
+dotenv_kotlin = { module = "io.github.cdimascio:dotenv-kotlin", version.ref = "dotenv_kotlin" }
+logback_classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+
+[bundles]
+ktor_server = [
+  "ktor_server_core",
+  "ktor_server_auth",
+  "ktor_server_sessions",
+  "ktor_server_host_common",
+  "ktor_server_status_pages",
+  "ktor_server_http_redirect",
+  "ktor_server_metrics",
+  "ktor_server_content_negotiation",
+  "ktor_server_call_logging",
+  "ktor_server_netty",
+  "ktor_server_rate_limit",
+  "ktor_server_html_builder",
+  "ktor_serialization_kotlinx_json",
+  "kotlin_css",
+]
+
+ktor_client = [
+  "ktor_client_core",
+  "ktor_client_cio",
+  "ktor_client_json",
+  "ktor_client_content_negotiation",
+]
+
+jetbrains_exposed = [
+  "jetbrains_exposed_core",
+  "jetbrains_exposed_dao",
+  "jetbrains_exposed_jdbc",
+]

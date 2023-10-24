@@ -28,45 +28,22 @@ repositories {
 }
 
 dependencies {
-    // Server
-    implementation("io.ktor:ktor-server-core-jvm")
-    implementation("io.ktor:ktor-server-auth-jvm")
-    implementation("io.ktor:ktor-server-sessions-jvm")
-    implementation("io.ktor:ktor-server-host-common-jvm")
-    implementation("io.ktor:ktor-server-status-pages-jvm")
-    implementation("io.ktor:ktor-server-http-redirect-jvm")
-    implementation("io.ktor:ktor-server-metrics-jvm")
-    implementation("io.ktor:ktor-server-content-negotiation-jvm")
-    implementation("io.ktor:ktor-serialization-kotlinx-json-jvm")
-    implementation("io.ktor:ktor-server-call-logging-jvm")
-    implementation("io.ktor:ktor-server-netty-jvm")
-    implementation("io.ktor:ktor-server-rate-limit-jvm")
-    implementation("io.ktor:ktor-server-html-builder-jvm")
-    implementation("org.jetbrains.kotlin-wrappers:kotlin-css:$kotlin_css_version")
+    implementation(libs.bundles.ktor.server)
 
-    // Database
-    implementation("org.jetbrains.exposed:exposed-core:$exposed_version")
-    implementation("org.jetbrains.exposed:exposed-dao:$exposed_version")
-    implementation("org.jetbrains.exposed:exposed-jdbc:$exposed_version")
-    implementation("org.xerial:sqlite-jdbc:$sqlite_version")
-    implementation("com.h2database:h2:$h2_version")
+    implementation(libs.bundles.jetbrains.exposed)
+    implementation(libs.db.sqlite.jdbc)
+    implementation(libs.db.h2.jdbc)
 
-    // Payment
-    implementation("com.stripe:stripe-java:24.0.0")
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation(libs.stripe.java)
+    implementation(libs.gson)
 
-    // Client
-    implementation("io.ktor:ktor-client-core-jvm")
-    implementation("io.ktor:ktor-client-cio-jvm")
-    implementation("io.ktor:ktor-client-json-jvm")
-    implementation("io.ktor:ktor-client-content-negotiation-jvm")
+    implementation(libs.bundles.ktor.client)
 
-    // Testing
-    implementation("io.ktor:ktor-server-tests-jvm")
-    testImplementation("io.ktor:ktor-server-tests-jvm")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    implementation(libs.dotenv.kotlin)
+    implementation(libs.logback.classic)
 
-    // Util
-    implementation("io.github.cdimascio:dotenv-kotlin:6.4.1")
-    implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation(libs.ktor.server.tests)
+    testImplementation(libs.ktor.server.tests)
+    testImplementation(libs.kotlin.test.junit)
+
 }
