@@ -25,10 +25,12 @@ fun Application.configureAuth() {
          */
         cookie<UserSession>("user_session") {
             cookie.maxAge = 7.days
-            cookie.httpOnly = false // TODO: research if this is okay. this is so javascript can access the cookie
+            //cookie.secure = true // TODO: enable this when we have HTTPS
+            cookie.httpOnly = false
         }
     }
 
+    val redirects = mutableMapOf<String, String>()
     authentication {
         /**
          * Allows for either a cookie session OR the api token to be used for authentication
@@ -66,7 +68,12 @@ fun Application.configureAuth() {
                     requestMethod = HttpMethod.Post,
                     clientId = Environment.DISCORD_CLIENT_ID,
                     clientSecret = Environment.DISCORD_CLIENT_SECRET,
-                    defaultScopes = listOf("identify", "email")
+                    defaultScopes = listOf("identify", "email"),
+                    onStateCreated = { call, state ->
+                        call.request.queryParameters["return_to"]?.let {
+                            redirects[state] = it
+                        }
+                    }
                 )
             }
             client = httpClient
@@ -90,14 +97,21 @@ fun Application.configureAuth() {
                 if (discordUser.email == null || !discordUser.verified || discordUser.bot)
                     return@get call.respond(HttpStatusCode.BadRequest)
 
-                val account = accountsDAO.readByDiscordId(discordUser.id) ?: accountsDAO.create(
-                    discordId = discordUser.id,
-                    username = discordUser.username,
-                    email = discordUser.email
-                ) ?: return@get call.respond(HttpStatusCode.InternalServerError)
+                val account = accountsDAO.readByDiscordId(discordUser.id)
+                    ?: accountsDAO.create(
+                        discordId = discordUser.id,
+                        username = discordUser.username,
+                        email = discordUser.email
+                    ) ?: return@get call.respond(HttpStatusCode.InternalServerError)
 
                 call.sessions.set(UserSession(account.id, account.accessToken))
-                call.respond(LoginSuccessResponse(success = true, account.accessToken))
+
+                redirects[principal.state]?.let { url ->
+                    call.respondRedirect {
+                        takeFrom(url)
+                        parameters["code"] = account.accessToken
+                    }
+                } ?: call.respond(LoginSuccessResponse(success = true, account.accessToken))
             }
         }
     }
