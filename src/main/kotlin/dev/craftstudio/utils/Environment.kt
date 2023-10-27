@@ -1,26 +1,31 @@
 package dev.craftstudio.utils
 
 import io.github.cdimascio.dotenv.dotenv
+import kotlin.properties.ReadOnlyProperty
 
 val dotenv = dotenv {
     ignoreIfMissing = true
 }
 
 object Environment {
-    val HOST = dotenv["HOST"]!!
-    val PORT = dotenv["PORT"]!!.toInt()
+    val HOST by env { it!! }
+    val PORT by env { it!!.toInt() }
 
-    val DATABASE_URL = dotenv["DATABASE_URL"]!!
-    val DATABASE_TYPE = dotenv["DATABASE_TYPE"] ?: "h2"
+    val DATABASE_URL by env { it!! }
+    val DATABASE_TYPE by env { it ?: "h2" }
 
-    val DISCORD_CLIENT_ID = dotenv["DISCORD_CLIENT_ID"]!!
-    val DISCORD_CLIENT_SECRET = dotenv["DISCORD_CLIENT_SECRET"]!!
+    val DISCORD_CLIENT_ID by env { it!! }
+    val DISCORD_CLIENT_SECRET by env { it!! }
 
-    val SUBSCRIPTION_CHECK_FREQUENCY = dotenv["SUBSCRIPTION_CHECK_FREQUENCY"]?.toLong() ?: 60L
+    val STRIPE_API_KEY by env { it }
+    val STRIPE_SECRET by env { it }
+    val STRIPE_WH_SECRET by env { it }
 
-    val STRIPE_API_KEY = dotenv["STRIPE_API_KEY"]
-    val STRIPE_SECRET = dotenv["STRIPE_SECRET"]
-    val STRIPE_WH_SECRET = dotenv["STRIPE_WH_SECRET"] ?: STRIPE_SECRET
+    val TEST_TOKEN by env { it ?: "test" }
+}
 
-    val TEST_TOKEN = dotenv["TEST_TOKEN"] ?: "test"
+class env<T>(private val transformer: (String?) -> T) : ReadOnlyProperty<Any?, T> {
+    override fun getValue(thisRef: Any?, property: kotlin.reflect.KProperty<*>): T {
+        return transformer(dotenv[property.name])
+    }
 }

@@ -24,6 +24,7 @@ ktor_server_call_logging = { module = "io.ktor:ktor-server-call-logging-jvm", ve
 ktor_server_netty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }
 ktor_server_rate_limit = { module = "io.ktor:ktor-server-rate-limit-jvm", version.ref = "ktor" }
 ktor_server_html_builder = { module = "io.ktor:ktor-server-html-builder-jvm", version.ref = "ktor" }
+ktor_server_cors = { module = "io.ktor:ktor-server-cors-jvm", version.ref = "ktor" }
 ktor_serialization_kotlinx_json = { module = "io.ktor:ktor-serialization-kotlinx-json-jvm", version.ref = "ktor" }
 kotlin_css = { module = "org.jetbrains.kotlin-wrappers:kotlin-css", version.ref = "kotlin_css" }
 
@@ -66,6 +67,7 @@ ktor_server = [
   "ktor_server_netty",
   "ktor_server_rate_limit",
   "ktor_server_html_builder",
+  "ktor_server_cors",
   "ktor_serialization_kotlinx_json",
   "kotlin_css",
 ]

@@ -44,16 +44,15 @@ fun Application.configurePaymentRoutes() {
             // This redirects the user to stripe's site to checkout
             //
             // Example: /payment/create-checkout-session?type=buyer&plan=unlimited&currency=usd
-            // TODO: revert this to a POST request. GET is easier for testing in chrome
-            get("/payment/create-checkout-session") {
+            post("/payment/create-checkout-session") {
                 val account = accountGetter()
 
                 // get what account type of subscription we're trying to purchase
                 val accountType = call.parameters["type"]
-                    ?: return@get call.respondError(HttpStatusCode.BadRequest, "Missing type")
+                    ?: return@post call.respondError(HttpStatusCode.BadRequest, "Missing type")
                 // get the specific plan for this account type
                 val subscriptionPlanName = call.parameters["plan"]
-                    ?: return@get call.respondError(HttpStatusCode.BadRequest, "Missing product")
+                    ?: return@post call.respondError(HttpStatusCode.BadRequest, "Missing product")
 
                 // retrieve the stripe product id from the subscription plan name and account type
                 val stripeProduct = when (accountType) {
@@ -61,12 +60,12 @@ fun Application.configurePaymentRoutes() {
                         // make sure the account has already been created as a buyer thru signup.
                         // subscriptions shouldn't implicitly register people as buyers or developers
                         if (!account.isBuyer) {
-                            return@get call.respondError(HttpStatusCode.BadRequest, "You are not a buyer")
+                            return@post call.respondError(HttpStatusCode.BadRequest, "You are not a buyer")
                         }
 
                         // get the subscription type from the name
                         val newType = BuyerSubscriptionType.allTypes.values.find { it.name == subscriptionPlanName }
-                            ?: return@get call.respondError(HttpStatusCode.BadRequest, "Invalid product")
+                            ?: return@post call.respondError(HttpStatusCode.BadRequest, "Invalid product")
 
                         newType.stripeId
                     }
@@ -75,22 +74,22 @@ fun Application.configurePaymentRoutes() {
                         // make sure the account has already been created as a developer thru signup.
                         // subscriptions shouldn't implicitly register people as buyers or developers
                         if (!account.isDeveloper) {
-                            return@get call.respondError(HttpStatusCode.BadRequest, "You are not a developer")
+                            return@post call.respondError(HttpStatusCode.BadRequest, "You are not a developer")
                         }
 
                         // get the subscription type from the name
                         val newType = DeveloperSubscriptionType.allTypes.values.find { it.name == subscriptionPlanName }
-                            ?: return@get call.respondError(HttpStatusCode.BadRequest, "Invalid product")
+                            ?: return@post call.respondError(HttpStatusCode.BadRequest, "Invalid product")
 
                         newType.stripeId
                     }
 
-                    else -> return@get call.respondError(HttpStatusCode.BadRequest, "Invalid type")
+                    else -> return@post call.respondError(HttpStatusCode.BadRequest, "Invalid type")
                 }
 
                 // 3 letter currency code. e.g. USD, CAD, EUR, GBP
                 val currency = call.parameters["currency"]
-                    ?: return@get call.respondError(HttpStatusCode.BadRequest, "Missing currency")
+                    ?: return@post call.respondError(HttpStatusCode.BadRequest, "Missing currency")
 
                 // the same subscription plan can have multiple prices for different currencies
                 // and other properties like discount prices. we want the default price for the specified currency
@@ -132,7 +131,7 @@ fun Application.configurePaymentRoutes() {
             // in the future this could possibly be on-site instead of a redirect to stripe's site
             //
             // Example: /payment/create-portal-session?return_url=http://localhost:8080/account
-            get("/payment/create-portal-session") {
+            post("/payment/create-portal-session") {
                 val account = accountGetter()
 
                 val params = BillingPortalSessionCreateParams.builder().apply {
@@ -154,8 +153,6 @@ fun Application.configurePaymentRoutes() {
             } else {
                 call.respondText("Payment failed")
             }
-
-
         }
 
         // this is called by stripe directly and contains key events

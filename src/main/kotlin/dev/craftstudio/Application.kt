@@ -5,7 +5,6 @@ import dev.craftstudio.db.DatabaseFactory
 import dev.craftstudio.payment.configurePaymentRoutes
 import dev.craftstudio.plugins.*
 import dev.craftstudio.routes.*
-import dev.craftstudio.testfrontend.configureTestFrontend
 import dev.craftstudio.utils.Environment
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -17,14 +16,13 @@ fun main() {
 }
 
 fun Application.module() {
+    configureCORS()
     DatabaseFactory.init()
     configureAuth()
     configureSerialization()
-    configureMonitoring()
+    //configureMonitoring()
     configureRateLimiting()
     configureStatusPages()
     configureAccountRoutes()
     configurePaymentRoutes()
-    configureTestFrontend()
-    configureSignupRoutes()
 }
