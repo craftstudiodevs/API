@@ -28,10 +28,12 @@ fun Routing.configureDeveloperRoutes() {
             val page = call.parameters["page"]?.toIntOrNull() ?: 1
             val pageSize = call.parameters["pageSize"]?.toIntOrNull() ?: 10
             val searchQuery = call.parameters["searchQuery"] ?: ""
-            val sortFunction = call.parameters["sortFunction"]?.let { CommissionSortFunction.valueOf(it) }
+            val sortFunction = call.parameters["sortFunction"]?.let { sort -> CommissionSortFunction.entries.find { e -> e.name == sort } }
                 ?: CommissionSortFunction.DATE_CREATED
             val inverseSortFunction = call.parameters["invertSort"]?.toBoolean() ?: false
 
+            // TODO: improve searching functionality. regexp? fuzzy search?
+            //       https://www.interviewquery.com/p/sql-fuzzy-matching
             val commissions = dbQuery {
                 Commissions
                     .select { (Commissions.status eq CommissionStatus.Bidding) and (Commissions.title like "%$searchQuery%") and ((Commissions.fixedPriceAmount lessEq devAccount.subscriptionType.fixedOfferLimit) or (Commissions.hourlyPriceAmount lessEq devAccount.subscriptionType.hourlyOfferLimit)) }

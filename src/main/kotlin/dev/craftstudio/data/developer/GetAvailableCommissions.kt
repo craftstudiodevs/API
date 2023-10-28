@@ -1,5 +1,6 @@
 package dev.craftstudio.data.developer
 
+import dev.craftstudio.db.CommissionCategory
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -23,4 +24,5 @@ data class DeveloperCommissionPreview(
     val commissionId: Int,
     val fixedPriceAmount: Int,
     val hourlyPriceAmount: Int,
+    val category: CommissionCategory,
 )

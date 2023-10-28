@@ -73,6 +73,7 @@ fun Routing.configureBuyerRoutes() {
                 data.minimumReputation,
                 account.id,
                 CommissionStatus.Bidding,
+                data.category,
             ) != null
 
             if (success) {

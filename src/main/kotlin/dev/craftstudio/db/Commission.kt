@@ -23,6 +23,7 @@ data class Commission(
     val creationTime: Long,
     val expiryTime: Long,
     val status: CommissionStatus,
+    val category: CommissionCategory,
     val owner: Access<Account>,
     val developer: Access<Account>? = null,
 ) : Access<Commission> {
@@ -37,6 +38,7 @@ data class Commission(
         creationTime = row[Commissions.creationTime],
         expiryTime = row[Commissions.expiryTime],
         status = row[Commissions.status],
+        category = row[Commissions.category],
         owner = DatabaseAccess(row[Commissions.owner]) { accountsDAO.read(it)!! },
         developer = row[Commissions.developer]?.let { DatabaseAccess(it) { accountsDAO.read(it)!! } },
     )
@@ -53,6 +55,7 @@ data class Commission(
         commissionId = id,
         fixedPriceAmount = fixedPriceAmount,
         hourlyPriceAmount = hourlyPriceAmount,
+        category = category,
     )
 
     override suspend fun resolve(): Commission = this
@@ -104,6 +107,15 @@ enum class CommissionStatus {
     Archived,
 }
 
+@Serializable
+enum class CommissionCategory {
+    Mod,
+    Plugin,
+    Modelling,
+    Texturing,
+    Multi,
+}
+
 object Commissions : Table() {
     val id = integer("id").autoIncrement()
     val title = varchar("title", 255)
@@ -114,7 +126,8 @@ object Commissions : Table() {
     val minimumReputation = integer("minimum_reputation")
     val creationTime = long("creation_time")
     val expiryTime = long("expiry_time")
-    val status = enumeration("status", CommissionStatus::class)
+    val status = enumeration<CommissionStatus>("status")
+    val category = enumeration<CommissionCategory>("category")
     val owner = reference("owner", Accounts.id)
     val developer = reference("developer", Accounts.id).nullable()
 
@@ -133,6 +146,7 @@ interface CommissionsDAO {
         expiryDays: Int,
         accountId: Int,
         status: CommissionStatus,
+        category: CommissionCategory,
     ): Commission?
 
     suspend fun read(id: Int): Commission?
@@ -167,6 +181,7 @@ class CommissionsDAOImpl : CommissionsDAO {
         expiryDays: Int,
         accountId: Int,
         status: CommissionStatus,
+        category: CommissionCategory,
     ): Commission? = dbQuery {
         val insertStatement = Commissions.insert {
             it[Commissions.title] = title
@@ -178,6 +193,7 @@ class CommissionsDAOImpl : CommissionsDAO {
             it[Commissions.creationTime] = System.currentTimeMillis()
             it[Commissions.expiryTime] = System.currentTimeMillis() + expiryDays.days.inWholeMilliseconds
             it[Commissions.status] = status
+            it[Commissions.category] = category
             it[Commissions.owner] = accountId
             it[Commissions.developer] = null
         }
@@ -194,6 +210,7 @@ class CommissionsDAOImpl : CommissionsDAO {
             it[Commissions.minimumReputation] = commission.minimumReputation
             it[Commissions.creationTime] = commission.creationTime
             it[Commissions.expiryTime] = commission.expiryTime
+            it[Commissions.status] = commission.status
             it[Commissions.owner] = commission.owner.id
             it[Commissions.developer] = commission.developer?.id
         } > 0

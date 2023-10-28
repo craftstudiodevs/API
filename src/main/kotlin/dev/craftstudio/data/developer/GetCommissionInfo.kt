@@ -2,6 +2,7 @@ package dev.craftstudio.data.developer
 
 import dev.craftstudio.data.AccountDetails
 import dev.craftstudio.db.Commission
+import dev.craftstudio.db.CommissionCategory
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -14,6 +15,7 @@ data class DeveloperCommissionResponse(
     val expiryTime: Long,
     val commissionId: Int,
     val buyer: AccountDetails,
+    val category: CommissionCategory,
     val minimumReputation: Int,
 )
 
@@ -26,5 +28,6 @@ suspend fun DeveloperCommissionResponse(commission: Commission) = DeveloperCommi
     expiryTime = commission.expiryTime,
     commissionId = commission.id,
     buyer = AccountDetails(commission.owner.resolve()),
+    category = commission.category,
     minimumReputation = commission.minimumReputation,
 )

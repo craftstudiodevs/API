@@ -1,5 +1,6 @@
 package dev.craftstudio.data.buyer
 
+import dev.craftstudio.db.CommissionCategory
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -10,5 +11,6 @@ data class SubmitCommissionRequestData(
     val fixedPriceAmount: Int,
     val hourlyPriceAmount: Int,
     val expiryDays: Int,
-    val minimumReputation: Int
+    val minimumReputation: Int,
+    val category: CommissionCategory,
 )
